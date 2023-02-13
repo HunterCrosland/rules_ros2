@@ -12,7 +12,7 @@ cc_library(
     name = "headers",
     hdrs = glob(["site-packages/numpy/core/include/numpy/**/*.h"]),
     includes = ["site-packages/numpy/core/include"],
-    deps = ["@rules_ros2_python//:python_headers"],
+    deps = ["@python3_8//:python_headers"],
 )
 """,
     ),

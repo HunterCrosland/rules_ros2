@@ -126,3 +126,12 @@ def ros2_repositories():
         strip_prefix = "gps_umd-fc782811804fafb12ee479a48a2aa2e9ee942e2d",
         urls = ["https://github.com/swri-robotics/gps_umd/archive/fc782811804fafb12ee479a48a2aa2e9ee942e2d.tar.gz"],
     )
+
+
+    maybe(
+        new_git_repository,
+        name = "osrf_negotiated",
+        build_file = "@com_github_mvukov_rules_ros2//repositories:osrf_negotiated.BUILD.bazel",
+        branch = "master",
+        remote = "https://github.com/osrf/negotiated",
+    )

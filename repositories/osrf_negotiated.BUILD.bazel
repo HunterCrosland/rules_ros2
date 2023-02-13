@@ -1,0 +1,36 @@
+load(
+    "@com_github_mvukov_rules_ros2//ros2:cc_defs.bzl",
+    "ros2_cpp_library",
+)
+load(
+    "@com_github_mvukov_rules_ros2//ros2:interfaces.bzl",
+    "cpp_ros2_interface_library",
+    "ros2_interface_library",
+)
+
+ros2_interface_library(
+    name = "negotiated_interfaces",
+    srcs = glob(["negotiated_interfaces/msg/*.msg"]),
+    visibility = ["//visibility:public"],
+    deps = ["@ros2_rcl_interfaces//:builtin_interfaces"],
+)
+
+cpp_ros2_interface_library(
+    name = "cpp_negotiated_msgs",
+    visibility = ["//visibility:public"],
+    deps = [":negotiated_interfaces"],
+)
+
+ros2_cpp_library(
+    name = "osrf_negotiated",
+    srcs = glob([
+        "negotiated/src/*.cpp",
+    ]),
+    hdrs = glob(["negotiated/include/negotiated/*.hpp"]),
+    includes = ["negotiated/include/negotiated"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@ros2_rclcpp//:rclcpp",
+        "cpp_negotiated_msgs",
+    ],
+)

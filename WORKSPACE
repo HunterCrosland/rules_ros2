@@ -1,5 +1,7 @@
 workspace(name = "com_github_mvukov_rules_ros2")
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 load("//repositories:repositories.bzl", "ros2_repositories")
 
 ros2_repositories()
@@ -11,12 +13,12 @@ ros2_deps()
 load("@rules_python//python:repositories.bzl", "python_register_toolchains")
 
 python_register_toolchains(
-    name = "rules_ros2_python",
+    name = "python3_8",
     python_version = "3.8.13",
 )
 
 load("@rules_python//python:pip.bzl", "pip_parse")
-load("@rules_ros2_python//:defs.bzl", python_interpreter_target = "interpreter")
+load("@python3_8//:defs.bzl", python_interpreter_target = "interpreter")
 
 pip_parse(
     name = "rules_ros2_pip_deps",
