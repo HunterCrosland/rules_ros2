@@ -28,7 +28,7 @@ ros2_cpp_library(
     ]),
     hdrs = glob(["negotiated/include/negotiated/*.hpp"]),
     includes = ["negotiated/include/negotiated"],
-    strip_include_prefix = "/include/",
+    strip_include_prefix = "/negotiated/include/",
     visibility = ["//visibility:public"],
     deps = [
         "@ros2_rclcpp//:rclcpp",
