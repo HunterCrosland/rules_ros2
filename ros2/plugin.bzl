@@ -11,10 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" ROS2 plugin definitions.
+""" ROS 2 plugin definitions.
 """
 
 load("@com_github_mvukov_rules_ros2//ros2:cc_defs.bzl", "ros2_cpp_library")
+load(
+    "@com_github_mvukov_rules_ros2//ros2:interfaces.bzl",
+    "CppGeneratorAspectInfo",
+    "IdlAdapterAspectInfo",
+    "Ros2InterfaceInfo",
+    "cpp_generator_aspect",
+    "idl_adapter_aspect",
+)
 load("@rules_cc//cc:toolchain_utils.bzl", "find_cpp_toolchain")
 
 Ros2PluginInfo = provider(
@@ -25,7 +33,7 @@ Ros2PluginInfo = provider(
     ],
 )
 
-def _ros2_plugin_impl(ctx):
+def _create_dynamic_library(ctx, **kwargs):
     cc_toolchain = find_cpp_toolchain(ctx)
     feature_configuration = cc_common.configure_features(
         ctx = ctx,
@@ -34,16 +42,23 @@ def _ros2_plugin_impl(ctx):
         unsupported_features = ctx.disabled_features,
     )
 
-    cc_info = ctx.attr.dep[CcInfo]
     linking_outputs = cc_common.link(
         actions = ctx.actions,
         feature_configuration = feature_configuration,
         cc_toolchain = cc_toolchain,
-        linking_contexts = [cc_info.linking_context],
-        name = ctx.attr.name + "/plugin",
         output_type = "dynamic_library",
+        **kwargs
     )
     dynamic_library = linking_outputs.library_to_link.resolved_symlink_dynamic_library
+    return dynamic_library
+
+def _ros2_plugin_impl(ctx):
+    name = ctx.attr.name + "/plugin"
+    dynamic_library = _create_dynamic_library(
+        ctx,
+        name = name,
+        linking_contexts = [ctx.attr.dep[CcInfo].linking_context],
+    )
 
     return [
         DefaultInfo(
@@ -84,12 +99,13 @@ def ros2_plugin(name, plugin_specs, **kwargs):
         types_to_bases_and_names[class_type] = [base_class_type, class_name]
 
     lib_name = "_" + name
-    tags = kwargs.get("tags", None)
+    tags = kwargs.pop("tags", None)
     visibility = kwargs.pop("visibility", None)
     ros2_cpp_library(
         name = lib_name,
         # This must be set such that static plugin registration works.
         alwayslink = True,
+        tags = ["manual"],
         **kwargs
     )
     ros2_plugin_rule(
@@ -152,4 +168,55 @@ ros2_plugin_collector_aspect = aspect(
     implementation = _ros2_plugin_collector_aspect_impl,
     attr_aspects = _ROS2_PLUGIN_COLLECTOR_ATTR_ASPECTS,
     provides = [Ros2PluginCollectorAspectInfo],
+)
+
+Ros2IdlPluginAspectInfo = provider(
+    "Provides info for generated IDL plugins.",
+    fields = [
+        "plugins",
+    ],
+)
+
+def _ros2_idl_plugin_aspect_impl(target, ctx):
+    package_name = target.label.name
+    cc_info = target[CppGeneratorAspectInfo].cc_info
+    dynamic_library = _create_dynamic_library(
+        ctx,
+        name = package_name + "/plugin",
+        compilation_outputs = target[CppGeneratorAspectInfo].compilation_outputs,
+        linking_contexts = [cc_info.linking_context],
+    )
+    plugin = struct(
+        package_name = package_name,
+        dynamic_library = dynamic_library,
+    )
+
+    return [
+        Ros2IdlPluginAspectInfo(
+            plugins = depset(
+                direct = [plugin],
+                transitive = [
+                    dep[Ros2IdlPluginAspectInfo].plugins
+                    for dep in ctx.rule.attr.deps
+                ],
+            ),
+        ),
+    ]
+
+ros2_idl_plugin_aspect = aspect(
+    implementation = _ros2_idl_plugin_aspect_impl,
+    attr_aspects = ["deps"],
+    attrs = {
+        "_cc_toolchain": attr.label(
+            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain"),
+        ),
+    },
+    required_providers = [Ros2InterfaceInfo],
+    required_aspect_providers = [
+        [IdlAdapterAspectInfo],
+        [CppGeneratorAspectInfo],
+    ],
+    provides = [Ros2IdlPluginAspectInfo],
+    toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
+    fragments = ["cpp"],
 )
